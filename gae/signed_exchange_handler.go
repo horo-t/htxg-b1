@@ -6,6 +6,7 @@ package main
 
 import (
 	"encoding/pem"
+	"encoding/base64"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -13,6 +14,7 @@ import (
 	"errors"
 
 	"github.com/WICG/webpackage/go/signedexchange"
+	"appengine"
 )
 
 func createExchange(contentUrl string, certUrlStr string, validityUrlStr string, pemCerts []byte, pemPrivateKey []byte, filename string, linkPreloadString string, date time.Time) (*signedexchange.Exchange, error)  {
@@ -117,6 +119,14 @@ func signedExchangeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.URL.Path == "/sxg/old_ocsp.sxg" {
 		e, _:= createExchange("https://"+demo_domain_name+"/hello_ec.html", "https://"+demo_appspot_name+"/cert/old_ocsp", nullValidityUrl, certs_ec256, key_ec256, "hello.html", "", time.Now().Add(-time.Second*10))
+		signedexchange.WriteExchangeFile(w, e)
+		return
+	}
+	if r.URL.Path == "/sxg/hello_data_url_cert.sxg" {
+		ctx := appengine.NewContext(r)
+		message, _ := getCertMessage(ctx, certs_ec256)
+		data_cert_url := "data:application/cert-chain+cbor;base64," + base64.StdEncoding.EncodeToString(message)
+		e, _:= createExchange("https://"+demo_domain_name+"/hello_data_url_cert.html", data_cert_url, nullValidityUrl, certs_ec256, key_ec256, "hello.html", "", time.Now().Add(-time.Second*10))
 		signedexchange.WriteExchangeFile(w, e)
 		return
 	}
